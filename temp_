@@ -1,0 +1,64 @@
+### Feature Importance Graphs
+    from sklearn.inspection import permutation_importance
+    featImp = {}
+    normalised = {}
+    for item in predictionD:
+        # print(f'{item} coeffs:')
+        if item == 'ANN':
+            allWeights = clfANN.get_weights()
+            wghFirstLayer = zeros(allWeights[0].shape)
+            for i in range(4):
+                wghFirstLayer += allWeights[i]
+            wghFirstLayer = wghFirstLayer/i
+            featImp[item] = wghFirstLayer
+        else:
+            feats, negFeats = retSubsetFeatures(item)
+            featImp[item] = permutation_importance(predictionD[item][2], feats, label, scoring='accuracy').importances_mean
+        # print('Type:', type(featImp[item]))
+        # print('Length:', len(featImp[item]))
+        # print('Sum:', sum(featImp[item]))
+        normalised[item] = featImp[item]/sum(featImp[item])
+        # print('Normalised Shape: ', normalised[item].shape)
+        # print('Normalised Sum: ', sum(normalised[item]))
+        temp = plotFeatureImportances(normalised[item], item)
+        normalised[item] = temp.drop(['ModelName'], axis=1)
+        # print()
+
+
+
+----------------------------------------------------------------------------------------
+
+def plotFeatureImportances(temp, modelName):
+    '''Feature Importances'''
+    feats, negFeats = retSubsetFeatures(modelName)
+    dt = DataFrame(temp.reshape((1, temp.shape[0])), columns=feats.columns)    
+    for it in negFeats:
+        dt[it] = 0
+    try:
+        lulc = dt.loc[:, ['LULC1', 'LULC2', 'LULC5', 'LULC7', 'LULC8', 'LULC9', 'LULC10', 'LULC11']]
+        sum0 = lulc.sum(axis=1)
+        dt = dt.drop(['LULC1', 'LULC2', 'LULC5', 'LULC7', 'LULC8', 'LULC9', 'LULC10', 'LULC11'], axis=1)
+    except:
+        sum0 = 0
+    try: 
+        soil = dt.loc[:, ['Soil3639', 'Soil3662', 'Soil3691', 'Soil3717', 'Soil3761', 'Soil3849', 'Soil3850', 'Soil6998']]
+        sum1 = soil.sum(axis=1)
+        dt = dt.drop(['Soil3639', 'Soil3662', 'Soil3691', 'Soil3717', 'Soil3761', 'Soil3849', 'Soil3850', 'Soil6998'], axis=1)
+    except:
+        sum1 = 0
+    dt['LULC'], dt['SoilType'] = sum0, sum1
+    dt['ModelName'] = modelName
+    # print('Feature Importance values:\n', dt)
+    plot = dt.plot.bar(rot=0, title=modelName)
+    plot.legend(loc='upper left')
+    plot.set_xlabel('Significant Features')
+    plot.set_ylabel('Normalised Ratio')
+    plt.show()
+    dt = dt[['Latitude', 'Longitude', 'TWI', 'TPI', 'Slope', 'Rainfall', 'Hillshade', 
+             'Elevation', 'DrainageDensity', 'ProfileCurvature', 'PlanCurvature', 
+             'Curvature', 'Aspect', 'LULC', 'SoilType', 'ModelName']]
+    try:
+        dt.to_csv(featureImportancePath, mode='a', index=False)
+    except:
+        dt.to_csv(featureImportancePath, index=False)
+    return dt
